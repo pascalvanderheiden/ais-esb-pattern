@@ -1,0 +1,166 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Parse_JSON_Message": {
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@triggerOutputs()?['body']?['contentData']",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "firstName": {
+                                "type": "string"
+                            },
+                            "lastName": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {}
+            },
+            "Initialize_variable_Operation": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "operation",
+                            "type": "string",
+                            "value": "@triggerOutputs()?['body']?['label']"
+                        }
+                    ]
+                },
+                "runAfter": {}
+            },
+            "Switch": {
+                "type": "Switch",
+                "expression": "@variables('operation')",
+                "cases": {
+                    "Case_Create": {
+                        "case": "create",
+                        "actions": {
+                            "Compose_Query_Create": {
+                                "type": "Compose",
+                                "inputs": "INSERT INTO Customer (FirstName, LastName, Status)\nVALUES ('@{body('Parse_JSON_Message')?['firstName']}', '@{body('Parse_JSON_Message')?['lastName']}', @{body('Parse_JSON_Message')?['status']})",
+                                "runAfter": {}
+                            },
+                            "Execute_Query_Create": {
+                                "type": "ServiceProvider",
+                                "inputs": {
+                                    "parameters": {
+                                        "query": "@outputs('Compose_Query_Create')"
+                                    },
+                                    "serviceProviderConfiguration": {
+                                        "connectionName": "sql",
+                                        "operationId": "executeQuery",
+                                        "serviceProviderId": "/serviceProviders/sql"
+                                    }
+                                },
+                                "runAfter": {
+                                    "Compose_Query_Create": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "Case_Update": {
+                        "case": "update",
+                        "actions": {
+                            "Compose_Query_Update": {
+                                "type": "Compose",
+                                "inputs": "UPDATE Customer\nSET FirstName = '@{body('Parse_JSON_Message')?['firstName']}', LastName= '@{body('Parse_JSON_Message')?['lastName']}',Status=@{body('Parse_JSON_Message')?['status']}\nWHERE Id = @{body('Parse_JSON_Message')?['id']}",
+                                "runAfter": {}
+                            },
+                            "Execute_Query_Update": {
+                                "type": "ServiceProvider",
+                                "inputs": {
+                                    "parameters": {
+                                        "query": "@outputs('Compose_Query_Update')"
+                                    },
+                                    "serviceProviderConfiguration": {
+                                        "connectionName": "sql",
+                                        "operationId": "executeQuery",
+                                        "serviceProviderId": "/serviceProviders/sql"
+                                    }
+                                },
+                                "runAfter": {
+                                    "Compose_Query_Update": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "Case_Delete": {
+                        "case": "delete",
+                        "actions": {
+                            "Compose_Query_Delete": {
+                                "type": "Compose",
+                                "inputs": "DELETE FROM Customer WHERE Id = @{body('Parse_JSON_Message')?['id']}",
+                                "runAfter": {}
+                            },
+                            "Execute_Query": {
+                                "type": "ServiceProvider",
+                                "inputs": {
+                                    "parameters": {
+                                        "query": "@outputs('Compose_Query_Delete')"
+                                    },
+                                    "serviceProviderConfiguration": {
+                                        "connectionName": "sql",
+                                        "operationId": "executeQuery",
+                                        "serviceProviderId": "/serviceProviders/sql"
+                                    }
+                                },
+                                "runAfter": {
+                                    "Compose_Query_Delete": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "default": {
+                    "actions": {}
+                },
+                "runAfter": {
+                    "Initialize_variable_Operation": [
+                        "Succeeded"
+                    ],
+                    "Parse_JSON_Message": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "triggers": {
+            "When_messages_are_available_in_a_topic_subscription": {
+                "type": "ServiceProvider",
+                "inputs": {
+                    "parameters": {
+                        "topicName": "customer-topic",
+                        "subscriptionName": "customer-ods-sub",
+                        "isSessionsEnabled": false
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "serviceBus",
+                        "operationId": "receiveTopicMessages",
+                        "serviceProviderId": "/serviceProviders/serviceBus"
+                    }
+                },
+                "splitOn": "@triggerOutputs()?['body']"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {}
+    },
+    "kind": "Stateful"
+}

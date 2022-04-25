@@ -1,0 +1,176 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Initialize_variable_messageArray": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "messageArray",
+                            "type": "array"
+                        }
+                    ]
+                },
+                "runAfter": {}
+            },
+            "Get_messages_from_a_topic_subscription_(peek-lock)": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "servicebus"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/@{encodeURIComponent(encodeURIComponent('customer-topic'))}/subscriptions/@{encodeURIComponent('customer-upd-sub')}/messages/batch/peek",
+                    "queries": {
+                        "maxMessageCount": 20,
+                        "subscriptionType": "Main",
+                        "sessionId": ""
+                    }
+                },
+                "runAfter": {
+                    "Initialize_variable_messageArray": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "For_each_Message": {
+                "type": "Foreach",
+                "foreach": "@body('Get_messages_from_a_topic_subscription_(peek-lock)')",
+                "actions": {
+                    "Compose_Payload": {
+                        "type": "Compose",
+                        "inputs": {
+                            "operation": "@items('For_each_Message')?['Label']",
+                            "payload": "@json(base64ToString(items('For_each_Message')?['ContentData']))"
+                        },
+                        "runAfter": {}
+                    },
+                    "Append_to_array_variable": {
+                        "type": "AppendToArrayVariable",
+                        "inputs": {
+                            "name": "messageArray",
+                            "value": "@outputs('Compose_Payload')"
+                        },
+                        "runAfter": {
+                            "Compose_Payload": [
+                                "Succeeded"
+                            ]
+                        }
+                    },
+                    "Complete_the_message_in_a_topic_subscription": {
+                        "type": "ApiConnection",
+                        "inputs": {
+                            "host": {
+                                "connection": {
+                                    "referenceName": "servicebus"
+                                }
+                            },
+                            "method": "delete",
+                            "path": "/@{encodeURIComponent(encodeURIComponent('customer-topic'))}/subscriptions/@{encodeURIComponent('customer-upd-sub')}/messages/complete",
+                            "queries": {
+                                "lockToken": "@items('For_each_Message')?['LockToken']",
+                                "subscriptionType": "Main",
+                                "sessionId": ""
+                            }
+                        },
+                        "runAfter": {
+                            "Append_to_array_variable": [
+                                "Succeeded"
+                            ]
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Get_messages_from_a_topic_subscription_(peek-lock)": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Response_Failed": {
+                "type": "Response",
+                "kind": "http",
+                "inputs": {
+                    "statusCode": 400,
+                    "body": "Error retrieving messages."
+                },
+                "runAfter": {
+                    "Get_messages_from_a_topic_subscription_(peek-lock)": [
+                        "TIMEDOUT",
+                        "FAILED"
+                    ]
+                }
+            },
+            "Condition": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "not": {
+                                "equals": [
+                                    "@length(variables('messageArray'))",
+                                    0
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "actions": {
+                    "Compose": {
+                        "type": "Compose",
+                        "inputs": "@variables('messageArray')",
+                        "runAfter": {}
+                    },
+                    "Response_Successful": {
+                        "type": "Response",
+                        "kind": "http",
+                        "inputs": {
+                            "statusCode": 200,
+                            "headers": {
+                                "Content-Type": "application/json"
+                            },
+                            "body": "@outputs('Compose')"
+                        },
+                        "runAfter": {
+                            "Compose": [
+                                "Succeeded"
+                            ]
+                        }
+                    }
+                },
+                "runAfter": {
+                    "For_each_Message": [
+                        "Succeeded"
+                    ]
+                },
+                "else": {
+                    "actions": {
+                        "Response_Empty": {
+                            "type": "Response",
+                            "kind": "http",
+                            "inputs": {
+                                "statusCode": 200,
+                                "body": "No records found."
+                            },
+                            "runAfter": {}
+                        }
+                    }
+                }
+            }
+        },
+        "triggers": {
+            "manual": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "GET"
+                }
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {}
+    },
+    "kind": "Stateless"
+}

@@ -1,0 +1,109 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Initialize_variable_Customer_Id_Filter": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "customerIdFilter",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "runAfter": {}
+            },
+            "Condition": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "not": {
+                                "equals": [
+                                    "@trigger().outputs?.queries?.id",
+                                    "@null"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "actions": {
+                    "Set_variable_Customer_Id_Filter": {
+                        "type": "SetVariable",
+                        "inputs": {
+                            "name": "customerIdFilter",
+                            "value": "WHERE Id = @{trigger().outputs?.queries?.id}"
+                        },
+                        "runAfter": {}
+                    }
+                },
+                "runAfter": {
+                    "Initialize_variable_Customer_Id_Filter": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Execute_Query": {
+                "type": "ServiceProvider",
+                "inputs": {
+                    "parameters": {
+                        "query": "SELECT * FROM [dbo].[Customer] @{variables('customerIdFilter')}"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "sql",
+                        "operationId": "executeQuery",
+                        "serviceProviderId": "/serviceProviders/sql"
+                    }
+                },
+                "runAfter": {
+                    "Condition": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Response_Failed": {
+                "type": "Response",
+                "kind": "http",
+                "inputs": {
+                    "statusCode": 404,
+                    "body": "The filter is not vaild."
+                },
+                "runAfter": {
+                    "Execute_Query": [
+                        "TIMEDOUT",
+                        "FAILED"
+                    ]
+                }
+            },
+            "Response_Successful": {
+                "type": "Response",
+                "kind": "http",
+                "inputs": {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": "@body('Execute_Query')"
+                },
+                "runAfter": {
+                    "Execute_Query": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "triggers": {
+            "manual": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "GET"
+                }
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {}
+    },
+    "kind": "Stateless"
+}
