@@ -1,4 +1,4 @@
-param ($subscriptionId, $resourceGroup, $logicAppName, $workflowPathGet, $workflowPathPost, $workflowPathGetUpdates, $workflowPathProcessSubOds, $destinationPath)
+param ($subscriptionId, $resourceGroup, $logicAppName, $workflowPathGet, $workflowPathPost, $workflowPathProcessSubOds, $destinationPath)
 
 Write-Host "Setting the paramaters:"
 Write-Host "Subscription id: "$subscriptionId
@@ -6,13 +6,12 @@ Write-Host "Resource Group: "$resourceGroup
 Write-Host "Logic App Name: "$logicAppName
 Write-Host "Workflow Path Get: "$workflowPathGet
 Write-Host "Workflow Path Post: "$workflowPathPost
-Write-Host "Workflow Path Get Updates: "$workflowPathGetUpdates
 Write-Host "Workflow Path Process updates to ODS: "$workflowPathProcessSubOds
 Write-Host "Destination Path ZIP Deployment: "$destinationPath
 
 Write-Host "Release Workflows to Logic App:"
 $compress = @{
-    Path = $workflowPathGet, $workflowPathPost, $workflowPathGetUpdates, $workflowPathProcessSubOds, ".\host.json", ".\connections.json"
+    Path = $workflowPathGet, $workflowPathPost, $workflowPathProcessSubOds, ".\host.json", ".\connections.json"
     CompressionLevel = "Fastest"
     DestinationPath = $destinationPath
 }

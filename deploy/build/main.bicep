@@ -5,6 +5,8 @@ targetScope = 'subscription'
 @maxLength(11)
 param namePrefix string
 param location string = deployment().location
+param policySendListenName string
+param policySendOnlyName string
 param administratorLogin string
 param administratorLoginPassword string
 
@@ -78,6 +80,8 @@ module serviceBusModule '../build/servicebus.bicep' = {
   params: {
     namePrefix: namePrefix
     location: location
+    policySendListenName: policySendListenName
+    policySendOnlyName: policySendOnlyName
   }
 }
 

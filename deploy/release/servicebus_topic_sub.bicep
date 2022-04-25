@@ -1,10 +1,9 @@
 targetScope = 'resourceGroup'
 
 param serviceBusNamespaceName string
-
-var serviceBusTopicName = 'customer-topic'
-var serviceBusSubODSName = 'customer-ods-sub'
-var serviceBusSubUpdName = 'customer-upd-sub'
+param serviceBusTopicName string
+param serviceBusSubODSName string
+param serviceBusSubUpdName string
 
 resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2017-04-01' existing = {
   name: serviceBusNamespaceName
