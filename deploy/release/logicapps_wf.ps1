@@ -1,4 +1,4 @@
-param ($subscriptionId, $resourceGroup, $logicAppName, $workflowPathGet, $workflowPathPost, $workflowPathProcessSubOds, $destinationPath)
+param ($subscriptionId, $resourceGroup, $logicAppName, $workflowPathGet, $workflowPathPost, $workflowPathProcessSubOds, $sqlConnectionString, $serviceBusConnectionString, $destinationPath)
 
 Write-Host "Setting the paramaters:"
 Write-Host "Subscription id: "$subscriptionId
@@ -18,3 +18,7 @@ $compress = @{
 Compress-Archive @compress
 
 az logicapp deployment source config-zip --name $logicAppName --resourcegroup $resourceGroup --subscription $subscriptionId --src $destinationPath
+
+Write-Host "Set connection strings in AppSettings:"
+az webapp config appsettings set -g $resourceGroup -n $logicAppName --settings sql_connectionString=$sqlConnectionString
+az webapp config appsettings set -g $resourceGroup -n $logicAppName --settings serviceBus_connectionString=$serviceBusConnectionString

@@ -23,18 +23,6 @@ $serviceBusSubODSName = "customer-ods-sub"
 $serviceBusSubUpdName = "customer-upd-sub"
 $serviceBusSubscriptionPath = "/$serviceBusTopicName/subscriptions/$serviceBusSubUpdName/messages/head"
 
-Write-Host "Subscription id: "$subscriptionId
-Write-Host "Deployment Name Build: "$deploymentNameBuild
-Write-Host "Deployment Name Release Service Bus: "$deploymentNameSBRelease
-Write-Host "Deployment Name Release API Management: "$deploymentNameAPIMRelease
-Write-Host "Resource Group: "$resourceGroup
-Write-Host "Location: "$location
-Write-Host "Build by Bicep File: "$buildBicepPath
-Write-Host "Release API's by Bicep File: "$releaseAPIMBicepPath
-Write-Host "Release Topics & Subscribers by Bicep File: "$releaseSBBicepPath
-Write-Host "Release SQL by script File: "$releaseSqlScriptPath
-Write-Host "SQL DB Name: "$sqlDBName
-
 Write-Host "Login to Azure:"
 Connect-AzAccount
 Set-AzContext -Subscription $subscriptionId
@@ -55,6 +43,7 @@ New-AzResourceGroupDeployment -Name $deploymentNameSBRelease -ResourceGroupName 
 
 Write-Host "Retrieve Service Bus Access Policy Key:"
 $policySendListenKey = az servicebus namespace authorization-rule keys list --resource-group $resourceGroup --namespace-name $serviceBusNamespaceName --name $policySendListenName --query "{primaryKey:primaryKey}" -o tsv
+$serviceBusConnectionString = az servicebus namespace authorization-rule keys list --resource-group $resourceGroup --namespace-name $serviceBusNamespaceName --name 'RootManageSharedAccessKey' --query "{primaryConnectionString:primaryConnectionString}" -o tsv
 
 Write-Host "Generate Service Bus SAS Key and store in API Management as Named Value:"
 $serviceBusSubUpdUri = "https://$serviceBusNamespaceName.servicebus.windows.net/${serviceBusTopicName}/subscriptions/${serviceBusSubUpdName}"
@@ -69,16 +58,10 @@ az sql server firewall-rule create -g $resourceGroup -s $serverName -n "AllowMyI
 az sql server firewall-rule create -g $resourceGroup -s $serverName -n "AllowAzureServices" --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
 Invoke-Sqlcmd -InputFile $releaseSqlScriptPath -ServerInstance $serverFQDName -Database $sqlDBName -Username $administratorLogin -Password $administratorLoginPassword
 
-Write-Host "Release Logic App Workflows:"
+Write-Host "Release Logic App Workflows & Connections:"
+$sqlConnectionString = "Server=$serverFQDName;Database=$sqlDBName;User ID=$administratorLogin;Password=$administratorLoginPassword"
 $logicAppName = az logic app list --resource-group $resourceGroup --subscription $subscriptionId --query "[].{Name:name}" -o tsv
-.\deploy\release\logicapps_wf.ps1 -subscriptionId $subscriptionId -resourceGroup $resourceGroup -logicAppName $logicAppName -workflowPathGet $workflowPathGet -workflowPathPost $workflowPathPost -workflowPathProcessSubOds $workflowPathProcessSubOds -destinationPath $destinationPath
-
-Write-Host "Update connection string Service Bus & SQL in AppSettings Logic App:"
-#hier moet nog iets, service bus connection string ophalen voor SendListen en SQL connections string.
-#deze moeten gevuld worden met een update:
-#sql_connectionString = Server=sqlvm01.aisase-ase.appserviceenvironment.net,1433;database=TestDB;UID=sa;PWD=Integration123
-#serviceBus_connectionString = endpoint uit portal (AZ script voor vinden, zou moet bicep kunnen) Endpoint=sb://aisshared-ns.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=El7CUbmf3uVvLFmmqNXzVjW9QG8NPw6V7GEkuRZZv90=
-
+.\deploy\release\logicapps_wf.ps1 -subscriptionId $subscriptionId -resourceGroup $resourceGroup -logicAppName $logicAppName -workflowPathGet $workflowPathGet -workflowPathPost $workflowPathPost -workflowPathProcessSubOds $workflowPathProcessSubOds -sqlConnectionString $sqlConnectionString -serviceBusConnectionString $serviceBusConnectionString -destinationPath $destinationPath
 
 Write-Host "Retrieve SAS Keys and store in API Management as Named Value:"
 .\deploy\release\get-saskey-from-logic-app.ps1 -subscriptionId $subscriptionId -resourceGroup $resourceGroup -logicAppName $logicAppName -workflowName $workflowGetName -apimName $apimName -apimNamedValueSig $workflowGetName
