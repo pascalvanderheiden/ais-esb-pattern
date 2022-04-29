@@ -24,7 +24,7 @@ $serviceBusSubUpdName = "customer-upd-sub"
 $serviceBusSubscriptionPath = "/$serviceBusTopicName/subscriptions/$serviceBusSubUpdName/messages/head"
 
 Write-Host "Login to Azure:"
-Connect-AzAccount
+az login
 Set-AzContext -Subscription $subscriptionId
 
 Write-Host "Build"
@@ -32,9 +32,11 @@ Write-Host "Deploy Infrastructure as Code:"
 New-AzSubscriptionDeployment -name $deploymentNameBuild -namePrefix $namePrefix -location $location -policySendListenName $policySendListenName -policySendOnlyName $policySendOnlyName -administratorLogin $administratorLogin -administratorLoginPassword $administratorLoginPassword -TemplateFile $buildBicepPath
 
 Write-Host "Release"
-Write-Host "Retrieve API Management Instance Name:"
+Write-Host "Retrieve API Management Instance & Application Insights Name:"
 $apimName = az apim list --resource-group $resourceGroup --subscription $subscriptionId --query "[].{Name:name}" -o tsv
+$appInsightsName = az monitor app-insights component show -g $resourceGroup --query "[].{applicationId:applicationId}" -o tsv
 Write-Host "API Management Instance:"$apimName
+Write-Host "Application Insights:"$appInsightsName
 
 Write-Host "Release Service Bus Topic and Subscribers:"
 $serviceBusNamespaceName = az servicebus namespace list --resource-group $resourceGroup --subscription $subscriptionId --query "[].{Name:name}" -o tsv
@@ -60,12 +62,15 @@ Invoke-Sqlcmd -InputFile $releaseSqlScriptPath -ServerInstance $serverFQDName -D
 
 Write-Host "Release Logic App Workflows & Connections:"
 $sqlConnectionString = "Server=$serverFQDName;Database=$sqlDBName;User ID=$administratorLogin;Password=$administratorLoginPassword"
-$logicAppName = az logic app list --resource-group $resourceGroup --subscription $subscriptionId --query "[].{Name:name}" -o tsv
+$logicAppName = az logicapp list --resource-group $resourceGroup --subscription $subscriptionId --query "[].{Name:name}" -o tsv
 .\deploy\release\logicapps_wf.ps1 -subscriptionId $subscriptionId -resourceGroup $resourceGroup -logicAppName $logicAppName -workflowPathGet $workflowPathGet -workflowPathPost $workflowPathPost -workflowPathProcessSubOds $workflowPathProcessSubOds -sqlConnectionString $sqlConnectionString -serviceBusConnectionString $serviceBusConnectionString -destinationPath $destinationPath
+
+Write-Host "Restart Logic App"
+az webapp restart --name $logicAppName --resource-group $resourceGroup
 
 Write-Host "Retrieve SAS Keys and store in API Management as Named Value:"
 .\deploy\release\get-saskey-from-logic-app.ps1 -subscriptionId $subscriptionId -resourceGroup $resourceGroup -logicAppName $logicAppName -workflowName $workflowGetName -apimName $apimName -apimNamedValueSig $workflowGetName
 .\deploy\release\get-saskey-from-logic-app.ps1 -subscriptionId $subscriptionId -resourceGroup $resourceGroup -logicAppName $logicAppName -workflowName $workflowPostName -apimName $apimName -apimNamedValueSig $workflowPostName
 
 Write-Host "Release API definition to API Management:"
-New-AzResourceGroupDeployment -Name $deploymentNameAPIMRelease -ResourceGroupName $resourceGroup -apimName $apimName -appInsightsName $appInsightsName -logicAppName $logicAppName -serviceBusName $serviceBusName -serviceBusSubscriptionPath $serviceBusSubscriptionPath -serviceBusSendListenSigNamedValue $serviceBusTopicName -workflowGetName $workflowGetName -workflowGetSigNamedValue $workflowGetName -workflowPostName $workflowPostName -workflowPostSigNamedValue $workflowPostName -TemplateFile $releaseAPIMBicepPath
+New-AzResourceGroupDeployment -Name $deploymentNameAPIMRelease -ResourceGroupName $resourceGroup -apimName $apimName -appInsightsName $appInsightsName -logicAppName $logicAppName -serviceBusNamespaceName $serviceBusNamespaceName -serviceBusSubscriptionPath $serviceBusSubscriptionPath -serviceBusSendListenSigNamedValue $serviceBusTopicName -workflowGetName $workflowGetName -workflowGetSigNamedValue $workflowGetName -workflowPostName $workflowPostName -workflowPostSigNamedValue $workflowPostName -TemplateFile $releaseAPIMBicepPath

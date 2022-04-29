@@ -9,11 +9,9 @@
 
 ## About
 
-Deploy a Logic App synchronous pattern VNET isolated in a App Service Environment exposed via Front Door and API Management. This deployment can be done by Github Actions or manually.
+Deploy a Enterprise Service Bus (ESB) architecture with Azure Integration Services. There is a lot happening in this architecture. I'm using an asynchronous pattern to process Create, Update and Delete operations in a reliable way. The pattern is based on the [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview) architecture. Instead of performing a read operation to the backend, I've implemented a Operational Data Store to store the latest state of the data, so application don't have to read from the backend every time you need to process a message. And latency wise this is a lot faster than using the backend. Another important benefit of the architecture, is that providers and consumers are decoupled for this entity. This means that you can easily add new consumers without having to update the backend and you are able to App Modernize the backend over time via a [Strangler pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/strangler-fig). Every API is fronted with API Management for manageabilty, monitoring, security and scalability. 
 
-To setup API Management, I used this [deployment script](https://github.com/Azure/azure-quickstart-templates/tree/master/quickstarts/microsoft.network/front-door-api-management).
-
-For deployment I choose to do it all in Bicep templates. I got most of my examples from [here](https://github.com/Azure/bicep/tree/main/docs/examples).
+For deployment I choose to do it all in Bicep templates & Powershell. I got most of my examples from [here](https://github.com/Azure/bicep/tree/main/docs/examples).
 
 For creating the Logic Apps workflows I've used [Visual Studio Code to create my Logic Apps (Standard)](https://docs.microsoft.com/en-us/azure/logic-apps/create-single-tenant-workflows-visual-studio-code), so you can develop and test them locally, without even having to go to Azure.  
 
@@ -67,6 +65,12 @@ az extension add --name logic
 az extension add --yes --source "https://aka.ms/logicapp-latest-py2.py3-none-any.whl"
 ```
 
+* Install Application Insights extension
+
+```ps1
+az extension add --name application-insights
+```
+
 * Install Azure SQL Module in PowerShell
 
 ```ps1
@@ -94,12 +98,14 @@ $subscriptionId = "<subscription_id>"
 $deploymentNameBuild = "<deployment_name_build>"
 $deploymentNameRelease = "<deployment_name_release>"
 $namePrefix = "<project_prefix>"
+$administratorLogin = "<administrator_login_sql>"
+$administratorLoginPassword = "<administrator_login_password_sql>"
 # For removing soft-delete
 $apimName = "<apim_name>"
 ```
 
 ```ps1
-.\deploy\manual-deploy.ps1 -subscriptionId $subscriptionId -deploymentNameBuild $deploymentNameBuild -deploymentNameRelease $deploymentNameRelease -namePrefix $namePrefix -workflowName $workflowName -apiName $apiName -apiPath $apiPath
+.\deploy\manual-deploy.ps1 -subscriptionId $subscriptionId -deploymentNameBuild $deploymentNameBuild -deploymentNameRelease $deploymentNameRelease -namePrefix $namePrefix -administratorLogin $administratorLogin -administratorLoginPassword $administratorLoginPassword
 ```
 
 * Remove the APIM Soft-delete
@@ -139,6 +145,8 @@ The following secrets need to be created:
 * DEPLOYMENT_NAME_BUILD
 * DEPLOYMENT_NAME_RELEASE
 * PREFIX
+* ADMINISTRATOR_LOGIN_SQL
+* ADMINISTRATOR_LOGIN_PASSWORD_SQL
 
 ### Commit
 

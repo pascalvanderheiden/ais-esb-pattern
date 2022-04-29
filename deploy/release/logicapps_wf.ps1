@@ -15,9 +15,9 @@ $compress = @{
     CompressionLevel = "Fastest"
     DestinationPath = $destinationPath
 }
-Compress-Archive @compress
+Compress-Archive @compress -Force
 
-az logicapp deployment source config-zip --name $logicAppName --resourcegroup $resourceGroup --subscription $subscriptionId --src $destinationPath
+az logicapp deployment source config-zip -g $resourceGroup -n $logicAppName --subscription $subscriptionId --src $destinationPath
 
 Write-Host "Set connection strings in AppSettings:"
 az webapp config appsettings set -g $resourceGroup -n $logicAppName --settings sql_connectionString=$sqlConnectionString
