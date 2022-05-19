@@ -3,7 +3,7 @@ targetScope = 'resourceGroup'
 param apimName string
 param appInsightsName string
 param logicAppName string
-param serviceBusName string
+param serviceBusNamespaceName string
 param serviceBusSubscriptionPath string
 param serviceBusSendListenSigNamedValue string
 param workflowGetName string
@@ -11,14 +11,13 @@ param workflowGetSigNamedValue string
 param workflowPostName string
 param workflowPostSigNamedValue string
 
-var serviceBusUri = 'https://${serviceBusName}.servicebus.windows.net'
-var apiAllPolicy = '<policies><inbound><base /><set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" /><set-backend-service backend-id="${logicAppName}" /></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-var apiGetPolicy = '<policies><inbound><base /><rewrite-uri template="${workflowGetName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowGetSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-var apiCreatePolicy = '<policies><inbound><base /><set-header name="operation" exists-action="append"><value>create</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-var apiUpdatePolicy = '<policies><inbound><base /><set-header name="operation" exists-action="append"><value>update</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-var apiDeletePolicy = '<policies><inbound><base /><set-header name="operation" exists-action="append"><value>delete</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-var apiGetUpdatesPolicy = '<policies><inbound><base /><set-backend-service backend-id="${serviceBusName}" /><rewrite-uri template="${serviceBusSubscriptionPath}" /><set-header name="Authorization" exists-action="override"><value>{{${serviceBusSendListenSigNamedValue}}}</value></set-header><set-method>DELETE</set-method></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-
+var serviceBusUri = 'https://${serviceBusNamespaceName}.servicebus.windows.net'
+var apiAllPolicy = '<policies><inbound><base /><set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" /></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+var apiGetPolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><rewrite-uri template="${workflowGetName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowGetSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+var apiCreatePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>create</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+var apiUpdatePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>update</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+var apiDeletePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>delete</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+var apiGetUpdatesPolicy = '<policies><inbound><base /><set-backend-service backend-id="${serviceBusNamespaceName}" /><rewrite-uri template="${serviceBusSubscriptionPath}" /><set-header name="Authorization" exists-action="override"><value>{{${serviceBusSendListenSigNamedValue}}}</value></set-header><set-method>DELETE</set-method></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
 
 resource apiManagement 'Microsoft.ApiManagement/service@2020-12-01' existing = {
   name: apimName
@@ -72,10 +71,10 @@ resource logicAppBackend 'Microsoft.ApiManagement/service/backends@2021-08-01' =
 }
 
 resource serviceBusBackend 'Microsoft.ApiManagement/service/backends@2021-08-01' = {
-  name: serviceBusName
+  name: serviceBusNamespaceName
   parent: apiManagement
   properties: {
-    description: serviceBusName
+    description: serviceBusNamespaceName
     url: serviceBusUri
     protocol: 'http'
     tls: {
