@@ -3,5 +3,8 @@
     "azureLogicAppsStandard.projectLanguage": "JavaScript",
     "azureLogicAppsStandard.projectRuntime": "~3",
     "debug.internalConsoleOptions": "neverOpen",
-    "azureFunctions.suppressProject": true
+    "azureFunctions.suppressProject": true,
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": "file:///c%3A/GitHub/ais-esb-pattern/.github/workflows/build.yml"
+    }
 }

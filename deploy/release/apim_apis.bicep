@@ -15,8 +15,8 @@ var serviceBusUri = 'https://${serviceBusNamespaceName}.servicebus.windows.net'
 var apiAllPolicy = '<policies><inbound><base /><set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" /></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
 var apiGetPolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><rewrite-uri template="${workflowGetName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowGetSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
 var apiCreatePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>create</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-var apiUpdatePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>update</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
-var apiDeletePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>delete</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+var apiUpdatePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>update</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter><set-method>POST</set-method></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
+var apiDeletePolicy = '<policies><inbound><base /><set-backend-service backend-id="${logicAppName}" /><set-header name="operation" exists-action="append"><value>delete</value></set-header><rewrite-uri template="${workflowPostName}/triggers/manual/invoke?api-version=2020-05-01-preview" /><set-query-parameter name="sig" exists-action="append"><value>{{${workflowPostSigNamedValue}}}</value></set-query-parameter><set-method>POST</set-method></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
 var apiGetUpdatesPolicy = '<policies><inbound><base /><set-backend-service backend-id="${serviceBusNamespaceName}" /><rewrite-uri template="${serviceBusSubscriptionPath}" /><set-header name="Authorization" exists-action="override"><value>{{${serviceBusSendListenSigNamedValue}}}</value></set-header><set-method>DELETE</set-method></inbound><backend><base /></backend><outbound><base /></outbound><on-error><base /></on-error></policies>'
 
 resource apiManagement 'Microsoft.ApiManagement/service@2020-12-01' existing = {
@@ -114,7 +114,19 @@ resource apiOperationCreate 'Microsoft.ApiManagement/service/apis/operations@202
     method: 'POST'
     urlTemplate: '/create'
     description: 'Create a customer'
+    request: {
+      representations: [
+          {
+              contentType: 'application/json' 
+              schemaId: 'customer'
+              typeName: 'Customer'
+          }
+      ]
+    }
   }
+  dependsOn: [
+    customerSchema
+  ]
 }
 
 resource apiOperationDelete 'Microsoft.ApiManagement/service/apis/operations@2020-06-01-preview' = {
@@ -125,7 +137,19 @@ resource apiOperationDelete 'Microsoft.ApiManagement/service/apis/operations@202
     method: 'DELETE'
     urlTemplate: '/delete'
     description: 'Delete a customer'
+    request: {
+      representations: [
+          {
+              contentType: 'application/json'
+              schemaId: 'customer'
+              typeName: 'Customer'
+          }
+      ]
+    }
   }
+  dependsOn: [
+    customerSchema
+  ]
 }
 
 resource apiOperationUpdate 'Microsoft.ApiManagement/service/apis/operations@2020-06-01-preview' = {
@@ -136,7 +160,19 @@ resource apiOperationUpdate 'Microsoft.ApiManagement/service/apis/operations@202
     method: 'PATCH'
     urlTemplate: '/update'
     description: 'Update a customer'
+    request: {
+      representations: [
+          {
+              contentType: 'application/json'
+              schemaId: 'customer'
+              typeName: 'Customer'
+          }
+      ]
+    }
   }
+  dependsOn: [
+    customerSchema
+  ]
 }
 
 resource apiOperationGetUpdates 'Microsoft.ApiManagement/service/apis/operations@2020-06-01-preview' = {
@@ -225,6 +261,37 @@ resource apiGetUpdatesPolicies 'Microsoft.ApiManagement/service/apis/operations/
     logicAppBackend
     apiAllPolicies
   ]
+}
+
+resource customerSchema 'Microsoft.ApiManagement/service/apis/schemas@2020-06-01-preview' = {
+  name: 'customer'
+  parent: apimApi
+  properties: {
+    contentType: 'application/vnd.oai.openapi.components+json'
+    document: {
+      components: {
+        schemas: {
+          Customer: {
+            type: 'object'
+            properties: {
+                id: {
+                    type: 'integer'
+                }
+                firstName: {
+                    type: 'string'
+                }
+                lastName: {
+                    type: 'string'
+                }
+                status: {
+                    type: 'integer'
+                }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 resource apiMonitoring 'Microsoft.ApiManagement/service/apis/diagnostics@2020-06-01-preview' = {

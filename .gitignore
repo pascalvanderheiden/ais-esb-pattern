@@ -1,4 +1,5 @@
 local.deploy.ps1
+local.tests.http
 # Azure Functions artifacts
 bin
 obj

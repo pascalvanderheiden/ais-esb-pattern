@@ -9,9 +9,9 @@
 
 ## About
 
-Deploy a Enterprise Service Bus (ESB) architecture with Azure Integration Services. There is a lot happening in this architecture. I'm using an asynchronous pattern to process Create, Update and Delete operations in a reliable way. The pattern is based on the [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview) architecture. Instead of performing a read operation to the backend, I've implemented a Operational Data Store to store the latest state of the data, so application don't have to read from the backend every time you need to process a message. And latency wise this is a lot faster than using the backend. Another important benefit of the architecture, is that providers and consumers are decoupled for this entity. This means that you can easily add new consumers without having to update the backend and you are able to App Modernize the backend over time via a [Strangler pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/strangler-fig). Every API is fronted with API Management for manageabilty, monitoring, security and scalability. 
+Deploy a Enterprise Service Bus (ESB) architecture with Azure Integration Services. There is a lot happening in this architecture. I'm using an asynchronous pattern to process Create, Update and Delete operations in a reliable way. The pattern is based on the [Azure Service Bus](https://docs.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview) architecture. Instead of performing a read operation to the backend, I've implemented a Operational Data Store to store the latest state of the data, so applications don't have to read from the backend every time they need to process a message. And latency wise this is a lot faster than using the backend. Another important benefit of the architecture, is that providers and consumers are decoupled for this entity. This means that you can easily add new consumers without having to update the backend and you are able to App Modernize the backend over time via a [Strangler pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/strangler-fig). Every API is fronted with API Management for manageabilty, monitoring, security and scalability. 
 
-For deployment I choose to do it all in Bicep templates & Powershell. I got most of my examples from [here](https://github.com/Azure/bicep/tree/main/docs/examples).
+For deployment I choose to do it all in Bicep templates & Powershell. I've got most of my examples from [here](https://github.com/Azure/bicep/tree/main/docs/examples).
 
 For creating the Logic Apps workflows I've used [Visual Studio Code to create my Logic Apps (Standard)](https://docs.microsoft.com/en-us/azure/logic-apps/create-single-tenant-workflows-visual-studio-code), so you can develop and test them locally, without even having to go to Azure.  
 
@@ -118,7 +118,7 @@ If you deleted the deployment via the Azure Portal, and you want to run this dep
 
 * Testing
 
-I've included a tests.http file with relevant Test you can perform, to check if your deployment is successful.
+I've included a tests.http file with relevant tests you can perform, to check if your deployment is successful.
 
 ## Deploy with Github Actions
 
@@ -127,7 +127,7 @@ I've included a tests.http file with relevant Test you can perform, to check if 
 * Generate a Service Principal
 
 ```ps1
-az ad sp create-for-rbac -n <name_sp> --role Contributor --sdk-auth
+az ad sp create-for-rbac -n <name_sp> --role Contributor --sdk-auth --scopes /subscriptions/<subscription_id>
 ```
 
 Copy the json output of this command.
@@ -142,8 +142,6 @@ The following secrets need to be created:
 * AZURE_CREDENTIALS
 * AZURE_SUBSCRIPTION_ID
 * LOCATION
-* DEPLOYMENT_NAME_BUILD
-* DEPLOYMENT_NAME_RELEASE
 * PREFIX
 * ADMINISTRATOR_LOGIN_SQL
 * ADMINISTRATOR_LOGIN_PASSWORD_SQL

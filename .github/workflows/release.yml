@@ -4,12 +4,25 @@ env:
   # deploymentNameBuild: ${{ github.event.inputs.deploymentNameBuild }}
   # location: ${{ github.event.inputs.location }}
   resourceGroup: '${{ secrets.PREFIX }}-rg'
-  releaseBicepPath: './deploy/release/${{ secrets.WORKFLOW_NAME }}-deploy-api.bicep'
-  logicAppName: '${{ secrets.PREFIX }}-la'
-  appInsightsName: '${{ secrets.PREFIX }}-ai'
-  workflowPath: './${{ secrets.WORKFLOW_NAME }}'
-  apimNameValueSig: '${{ secrets.WORKFLOW_NAME }}-sig'
-  frontDoorIdNamedValue: '${{ secrets.PREFIX }}-fd-id'
+  buildBicepPath: './deploy/build/main.bicep'
+  releaseSBBicepPath: './deploy/release/servicebus_topic_sub.bicep'
+  releaseAPIMBicepPath: './deploy/release/apim_apis.bicep'
+  releaseSqlScriptPath: './deploy/release/sql_table.sql'
+  deploymentNameSBRelease: '${{ secrets.PREFIX }}-sb-release'
+  deploymentNameAPIMRelease: '${{ secrets.PREFIX }}-apim-release'
+  sqlDBName: 'sql-${{ secrets.PREFIX }}-db'
+  workflowGetName: 'ais-esb-get-wf'
+  workflowPathGet: './ais-esb-get-wf'
+  workflowPostName: 'ais-esb-post-wf'
+  workflowPathPost: './ais-esb-post-wf'
+  workflowPathProcessSubOds: './ais-esb-process-sub-ods-wf'
+  destinationPath: './deploy/release/ais-esb-wf-release.zip'
+  policySendListenName: 'SendListen'
+  policySendOnlyName: 'SendOnly'
+  serviceBusTopicName: 'customer-topic'
+  serviceBusSubODSName: 'customer-ods-sub'
+  serviceBusSubUpdName: 'customer-upd-sub'
+  serviceBusSubscriptionPath: '/customer-topic/subscriptions/customer-upd-sub/messages/head'
 
 on:
   # Only trigger, when the build workflow succeeded
@@ -49,50 +62,93 @@ jobs:
             Set-AzContext -Subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           azPSVersion: "latest"
 
-      # GET APIM INSTANCE NAME
-      - name: 'Retrieve API Management Instance Name'
+      # IMPORT MODULES
+      - name: 'Set context to subscription'
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            az extension add --name application-insights
+            az extension add --name logic
+            az extension add --yes --source "https://aka.ms/logicapp-latest-py2.py3-none-any.whl"
+            Install-Module SQLServer
+            Import-Module SQLServer
+            Import-Module Az.Sql -Force
+          azPSVersion: "latest"
+
+      - name: 'Retrieve API Management Instance & Application Insights Name'
         uses: azure/powershell@v1
         with:
           inlineScript: |
             $apimName = az apim list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query '[].{Name:name}' -o tsv
+            $appInsightsName = az monitor app-insights component show -g '${{ env.resourceGroup }}'--query "[].{applicationId:applicationId}" -o tsv
             echo "APIM_NAME=$apimName" >> $Env:GITHUB_ENV
+            echo "APPINSIGHTS_NAME=$appInsightsName" >> $Env:GITHUB_ENV
           azPSVersion: "latest"
 
-      # GET STORAGE ACCOUNT NAME AND KEY
-      - name: 'Retrieve Storage Account Name & Key Name'
+      - name: 'Release Service Bus Topic and Subscribers'
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            $storageAccountName = az storage account list -g '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query '[].{Name:name}' -o tsv
-            $storageKey = az storage account keys list -g '${{ env.resourceGroup }}' -n $storageAccountName --query '[0].{Name:value}' -o tsv
-            echo "SA_NAME=$storageAccountName" >> $Env:GITHUB_ENV
-            echo "SA_KEY=$storageKey" >> $Env:GITHUB_ENV
+            $serviceBusNamespaceName = az servicebus namespace list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{Name:name}" -o tsv
+            echo "SERVICEBUS_NS_NAME=$serviceBusNamespaceName" >> $Env:GITHUB_ENV
+            New-AzResourceGroupDeployment -Name '${{ env.deploymentNameSBRelease }}' -ResourceGroupName '${{ env.resourceGroup }}' -serviceBusNamespaceName $serviceBusNamespaceName -serviceBusTopicName '${{ env.serviceBusTopicName }}' -serviceBusSubODSName '${{ env.serviceBusSubODSName }}' -serviceBusSubUpdName '${{ env.serviceBusSubUpdName }}' -TemplateFile '${{ env.releaseSBBicepPath }}'
           azPSVersion: "latest"
 
-      # DEPLOY WORKFLOW TO LOGIC APP
-      - name: 'Deploy Workflow to Logic App'
+      - name: 'Retrieve Service Bus Access Policy Key'
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            az storage file upload --account-name '${{ env.SA_NAME }}' --account-key '${{ env.SA_KEY }}'--share-name '${{ env.logicAppName }}' --path 'site/wwwroot/host.json' --source './host.json'
-            az storage directory create --account-name '${{ env.SA_NAME }}' --account-key '${{ env.SA_KEY }}' --name 'site/wwwroot/${{ secrets.WORKFLOW_NAME }}' --share-name '${{ env.logicAppName }}'
-            az storage file upload --account-name '${{ env.SA_NAME }}' --account-key '${{ env.SA_KEY }}' --share-name '${{ env.logicAppName }}' --path 'site/wwwroot/${{ secrets.WORKFLOW_NAME }}/workflow.json' --source './${{ secrets.WORKFLOW_NAME }}/workflow.json'
+            $policySendListenKey = az servicebus namespace authorization-rule keys list --resource-group '${{ env.resourceGroup }}' --namespace-name '${{ env.SERVICEBUS_NS_NAME }}' --name '${{ env.policySendListenName }}' --query "{primaryKey:primaryKey}" -o tsv
+            $serviceBusConnectionString = az servicebus namespace authorization-rule keys list --resource-group '${{ env.resourceGroup }}' --namespace-name '${{ env.SERVICEBUS_NS_NAME }}' --name 'RootManageSharedAccessKey' --query "{primaryConnectionString:primaryConnectionString}" -o tsv
+            echo "POLICY_SEND_LISTEN_KEY=$policySendListenKey" >> $Env:GITHUB_ENV
+            echo "SB_CONNECTIONSTRING=$serviceBusConnectionString" >> $Env:GITHUB_ENV
           azPSVersion: "latest"
 
-      # RETRIEVE SAS KEY LOGIC APP WORKFLOW AND STORE IT IN APIM NAMED VALUE
-      - name: 'Retrieve SAS Key and store in API Management as Named Value'
+      - name: 'Generate Service Bus SAS Key and store in API Management as Named Value'
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            .\deploy\release\get-saskey-from-logic-app.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}' -logicAppName '${{ env.logicAppName }}' -workflowName '${{ secrets.WORKFLOW_NAME }}' -apimName '${{ env.APIM_NAME }}' -apimNamedValueSig '${{ env.apimNameValueSig }}'
+            $serviceBusSubUpdUri = "https://${{ env.SERVICEBUS_NS_NAME }}.servicebus.windows.net/${{ env.serviceBusTopicName }}/subscriptions/${{ env.serviceBusSubUpdName }}"
+            .\deploy\release\get-saskey-from-service-bus.ps1 -serviceBusUri $serviceBusSubUpdUri -accessPolicyName '${{ env.policySendListenName }}' -accessPolicyKey '${{ env.policySendListenKey }}' -apimName '${{ env.APIM_NAME }}' -resourceGroup '${{ env.resourceGroup }}' -apimNamedValueSig '${{ env.serviceBusTopicName }}'
           azPSVersion: "latest"
 
-      # DEPLOY API TO API MANAGEMENT
-      - name: 'Deploy API definition to API Management'
+      - name: 'Create SQL Tables'
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            New-AzResourceGroupDeployment -Name '${{ secrets.DEPLOYMENT_NAME_RELEASE }}' -ResourceGroupName '${{ env.resourceGroup }}' -apimName '${{ env.APIM_NAME }}' -appInsightsName '${{ env.appInsightsName }}' -logicAppName '${{ env.logicAppName }}' -workflowName '${{ secrets.WORKFLOW_NAME }}' -workflowSigNamedValue '${{ env.apimNameValueSig }}' -frontDoorIdNamedValue '${{ env.frontDoorIdNamedValue }}' -apiName '${{ secrets.API_NAME }}' -apiPath '${{ secrets.API_PATH }}' -TemplateFile '${{ env.releaseBicepPath }}'
+            $serverName = az sql server list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{Name:name}" -o tsv
+            $serverFQDName = az sql server list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{fullyQualifiedDomainName:fullyQualifiedDomainName}" -o tsv
+            echo "SERVER_FQD_NAME=$serverFQDName" >> $Env:GITHUB_ENV
+            $agentIP = (New-Object net.webclient).downloadstring("https://api.ipify.org")
+            az sql server firewall-rule create -g '${{ env.resourceGroup }}' -s $serverName -n "AllowMyIp" --start-ip-address $agentIP --end-ip-address $agentIP
+            az sql server firewall-rule create -g '${{ env.resourceGroup }}' -s $serverName -n "AllowAzureServices" --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
+            Invoke-Sqlcmd -InputFile '${{ env.releaseSqlScriptPath }}' -ServerInstance $serverFQDName -Database '${{ env.sqlDBName }}' -Username '${{ secrets.ADMINISTRATOR_LOGIN_SQL }}' -Password '${{ secrets.ADMINISTRATOR_LOGIN_PASSWORD_SQL }}'
+          azPSVersion: "latest"
+
+      - name: 'Release Logic App Workflows & Connections'
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            $sqlConnectionString = "Server=${{ env.SERVER_FQD_NAME }};Database=${{ env.sqlDBName }};User ID=${{ secrets.ADMINISTRATOR_LOGIN_SQL }};Password=${{ secrets.ADMINISTRATOR_LOGIN_PASSWORD_SQL }}"
+            $logicAppName = az logicapp list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{Name:name}" -o tsv
+            echo "LA_NAME=$logicAppName" >> $Env:GITHUB_ENV
+            .\deploy\release\logicapps_wf.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}'-logicAppName $logicAppName -workflowPathGet '${{ env.workflowPathGet }}' -workflowPathPost '${{ env.workflowPathPost }}' -workflowPathProcessSubOds '${{ env.workflowPathProcessSubOds }}' -sqlConnectionString $sqlConnectionString -serviceBusConnectionString '${{ env.SB_CONNECTIONSTRING }}' -destinationPath '${{ env.destinationPath }}'
+            az webapp restart --name $logicAppName --resource-group '${{ env.resourceGroup }}'
+          azPSVersion: "latest"
+
+      - name: 'Retrieve SAS Keys and store in API Management as Named Value'
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            .\deploy\release\get-saskey-from-logic-app.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}' -logicAppName '${{ env.LA_NAME }}' -workflowName '${{ env.workflowGetName }}' -apimName '${{ env.APIM_NAME }}' -apimNamedValueSig '${{ env.workflowGetName }}'
+            .\deploy\release\get-saskey-from-logic-app.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}' -logicAppName '${{ env.LA_NAME }}' -workflowName '${{ env.workflowPostName }}' -apimName '${{ env.APIM_NAME }}' -apimNamedValueSig '${{ env.workflowPostName }}'
+          azPSVersion: "latest"
+
+      - name: 'Release API definition to API Management'
+        uses: azure/powershell@v1
+        with:
+          inlineScript: |
+            New-AzResourceGroupDeployment -Name '${{ env.deploymentNameAPIMRelease }}' -ResourceGroupName '${{ env.resourceGroup }}' -apimName '${{ env.APIM_NAME }}' -appInsightsName '${{ env.APPINSIGHTS_NAME }}' -logicAppName '${{ env.LA_NAME }}' -serviceBusNamespaceName '${{ env.SERVICEBUS_NS_NAME }}' -serviceBusSubscriptionPath '${{ env.serviceBusSubscriptionPath }}' -serviceBusSendListenSigNamedValue '${{ env.serviceBusTopicName }}' -workflowGetName '${{ env.workflowGetName }}' -workflowGetSigNamedValue '${{ env.workflowGetName }}' -workflowPostName '${{ env.workflowPostName }}' -workflowPostSigNamedValue '${{ env.workflowPostName }}' -TemplateFile '${{ env.releaseAPIMBicepPath }}'
           azPSVersion: "latest"
 
       # LOGOUT

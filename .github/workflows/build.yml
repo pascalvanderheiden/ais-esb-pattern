@@ -4,7 +4,10 @@ env:
   # deploymentNameBuild: ${{ github.event.inputs.deploymentNameBuild }}
   # location: ${{ github.event.inputs.location }}
   buildBicepPath: './deploy/build/main.bicep'
-
+  deploymentNameBuild: 'deployEsbPatternBuild'
+  policySendListenName: 'SendListen'
+  policySendOnlyName: 'SendOnly'
+  
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   #push:
@@ -41,7 +44,7 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            New-AzSubscriptionDeployment -name '${{ secrets.DEPLOYMENT_NAME_BUILD }}' -namePrefix '${{ secrets.PREFIX }}' -location '${{ secrets.LOCATION }}' -TemplateFile '${{ env.buildBicepPath }}'
+            New-AzSubscriptionDeployment -name '${{ env.deploymentNameBuild }}' -namePrefix '${{ secrets.PREFIX }}' -location '${{ secrets.LOCATION }}' -policySendListenName '${{ env.policySendListenName }}' -policySendOnlyName '${{ env.policySendOnlyName }}' -administratorLogin '${{ secrets.ADMINISTRATOR_LOGIN_SQL }}' -administratorLoginPassword '${{ secrets.ADMINISTRATOR_LOGIN_SQL }}' -TemplateFile '${{ env.buildBicepPath }}'
           azPSVersion: "latest"
 
       # LOGOUT
