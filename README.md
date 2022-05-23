@@ -102,6 +102,10 @@ $administratorLoginPassword = "<administrator_login_password_sql>"
 $apimName = "<apim_name>"
 ```
 
+Limit the namePrefix to a maximum of 6-7 characters.
+
+```ps1
+
 ```ps1
 .\deploy\manual-deploy.ps1 -subscriptionId $subscriptionId -namePrefix $namePrefix -administratorLogin $administratorLogin -administratorLoginPassword $administratorLoginPassword
 ```
@@ -143,6 +147,8 @@ The following secrets need to be created:
 * PREFIX
 * ADMINISTRATOR_LOGIN_SQL
 * ADMINISTRATOR_LOGIN_PASSWORD_SQL
+
+Limit the PREFIX to a maximum of 6-7 characters.
 
 ### Commit
 

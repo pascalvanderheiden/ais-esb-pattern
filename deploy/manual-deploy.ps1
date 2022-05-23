@@ -1,7 +1,7 @@
 param ($subscriptionId, $namePrefix, $administratorLogin, $administratorLoginPassword)
 
 Write-Host "Setting the paramaters:"
-$location = "West Europe"
+$location = "westeurope"
 $resourceGroup = "$namePrefix-rg"
 $buildBicepPath = ".\deploy\build\main.bicep"
 $releaseSBBicepPath = ".\deploy\release\servicebus_topic_sub.bicep"
