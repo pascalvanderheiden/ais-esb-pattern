@@ -95,8 +95,6 @@ I've used these variables:
 
 ```ps1
 $subscriptionId = "<subscription_id>"
-$deploymentNameBuild = "<deployment_name_build>"
-$deploymentNameRelease = "<deployment_name_release>"
 $namePrefix = "<project_prefix>"
 $administratorLogin = "<administrator_login_sql>"
 $administratorLoginPassword = "<administrator_login_password_sql>"
@@ -105,7 +103,7 @@ $apimName = "<apim_name>"
 ```
 
 ```ps1
-.\deploy\manual-deploy.ps1 -subscriptionId $subscriptionId -deploymentNameBuild $deploymentNameBuild -deploymentNameRelease $deploymentNameRelease -namePrefix $namePrefix -administratorLogin $administratorLogin -administratorLoginPassword $administratorLoginPassword
+.\deploy\manual-deploy.ps1 -subscriptionId $subscriptionId -namePrefix $namePrefix -administratorLogin $administratorLogin -administratorLoginPassword $administratorLoginPassword
 ```
 
 * Remove the APIM Soft-delete
