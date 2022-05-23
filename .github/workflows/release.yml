@@ -115,14 +115,16 @@ jobs:
         with:
           inlineScript: |
             $serverFQDName = az sql server list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{fullyQualifiedDomainName:fullyQualifiedDomainName}" -o tsv
-            $sqlConnectionString = "Server=$serverFQDName;Database=${{ env.sqlDBName }};User ID=${{ secrets.ADMINISTRATOR_LOGIN_SQL }};Password=${{ secrets.ADMINISTRATOR_LOGIN_PASSWORD_SQL }}"
-            echo "AZURE_SQL_CONNECTION_STRING=$sqlConnectionString" >> $Env:GITHUB_ENV
+            $sqlConnectionStringLa = "Server=$serverFQDName;Database=${{ env.sqlDBName }};User ID=${{ secrets.ADMINISTRATOR_LOGIN_SQL }};Password=${{ secrets.ADMINISTRATOR_LOGIN_PASSWORD_SQL }}"
+            $sqlConnectionStringSql = "Server=$serverFQDName;User ID=${{ secrets.ADMINISTRATOR_LOGIN_SQL }};Password=${{ secrets.ADMINISTRATOR_LOGIN_PASSWORD_SQL }};Initial Catalog=${{ env.sqlDBName }}"
+            echo "AZURE_SQL_CONNECTION_STRING_LA=$sqlConnectionStringLa" >> $Env:GITHUB_ENV
+            echo "AZURE_SQL_CONNECTION_STRING_SQL=$sqlConnectionStringSql" >> $Env:GITHUB_ENV
           azPSVersion: "latest"
 
       - name: 'Create SQL Tables'
         uses: azure/sql-action@v1.3
         with:        
-          connection-string: ${{ env.AZURE_SQL_CONNECTION_STRING }}
+          connection-string: ${{ env.AZURE_SQL_CONNECTION_STRING_SQL }}
           sql-file: '${{ env.releaseSqlScriptPath }}'
 
       - name: 'Release Logic App Workflows & Connections'
@@ -131,7 +133,7 @@ jobs:
           inlineScript: |
             $logicAppName = az logicapp list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{Name:name}" -o tsv
             echo "LA_NAME=$logicAppName" >> $Env:GITHUB_ENV
-            .\deploy\release\logicapps_wf.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}'-logicAppName $logicAppName -workflowPathGet '${{ env.workflowPathGet }}' -workflowPathPost '${{ env.workflowPathPost }}' -workflowPathProcessSubOds '${{ env.workflowPathProcessSubOds }}' -sqlConnectionString '${{ env.AZURE_SQL_CONNECTION_STRING }}' -serviceBusConnectionString '${{ env.SB_CONNECTIONSTRING }}' -destinationPath '${{ env.destinationPath }}'
+            .\deploy\release\logicapps_wf.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}'-logicAppName $logicAppName -workflowPathGet '${{ env.workflowPathGet }}' -workflowPathPost '${{ env.workflowPathPost }}' -workflowPathProcessSubOds '${{ env.workflowPathProcessSubOds }}' -sqlConnectionString '${{ env.AZURE_SQL_CONNECTION_STRING_LA }}' -serviceBusConnectionString '${{ env.SB_CONNECTIONSTRING }}' -destinationPath '${{ env.destinationPath }}'
             az webapp restart --name $logicAppName --resource-group '${{ env.resourceGroup }}'
           azPSVersion: "latest"
 
