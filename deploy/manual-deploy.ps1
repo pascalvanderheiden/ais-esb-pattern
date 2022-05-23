@@ -58,7 +58,8 @@ $serverFQDName = az sql server list --resource-group $resourceGroup --subscripti
 Write-Host "SQL Server: "$serverFQDName
 $agentIP = (New-Object net.webclient).downloadstring("https://api.ipify.org")
 az sql server firewall-rule create -g $resourceGroup -s $serverName -n "AllowMyIp" --start-ip-address $agentIP --end-ip-address $agentIP
-az sql server firewall-rule create -g $resourceGroup -s $serverName -n "AllowAzureServices" --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
+# Ad. Moved to Build SQL Bicep script
+# az sql server firewall-rule create -g $resourceGroup -s $serverName -n "AllowAzureServices" --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
 Invoke-Sqlcmd -InputFile $releaseSqlScriptPath -ServerInstance $serverFQDName -Database $sqlDBName -Username $administratorLogin -Password $administratorLoginPassword
 
 Write-Host "Release Logic App Workflows & Connections:"

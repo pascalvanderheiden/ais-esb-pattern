@@ -28,5 +28,14 @@ resource sqlDB 'Microsoft.Sql/servers/databases@2020-08-01-preview' = {
   }
 }
 
+resource symbolicname 'Microsoft.Sql/servers/firewallRules@2021-11-01-preview' = {
+  name: 'AllowAzureServices'
+  parent: server
+  properties: {
+    endIpAddress: '0.0.0.0'
+    startIpAddress: '0.0.0.0'
+  }
+}
+
 output serverName string = server.name
 output sqlDBName string = sqlDB.name
