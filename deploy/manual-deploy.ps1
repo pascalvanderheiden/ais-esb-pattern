@@ -1,4 +1,4 @@
-param ($subscriptionId, $deploymentNameBuild, $deploymentNameRelease, $namePrefix, $administratorLogin, $administratorLoginPassword)
+param ($subscriptionId, $namePrefix, $administratorLogin, $administratorLoginPassword)
 
 Write-Host "Setting the paramaters:"
 $location = "West Europe"
@@ -7,6 +7,7 @@ $buildBicepPath = ".\deploy\build\main.bicep"
 $releaseSBBicepPath = ".\deploy\release\servicebus_topic_sub.bicep"
 $releaseAPIMBicepPath = ".\deploy\release\apim_apis.bicep"
 $releaseSqlScriptPath = ".\deploy\release\sql_table.sql"
+$deploymentNameBuild = "$namePrefix-build"
 $deploymentNameSBRelease = "$namePrefix-sb-release"
 $deploymentNameAPIMRelease = "$namePrefix-apim-release"
 $sqlDBName = "sql-$namePrefix-db"
