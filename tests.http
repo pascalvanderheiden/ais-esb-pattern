@@ -1,5 +1,5 @@
-@apimName = <api-management-instance-name>
-@subscriptionKey = <api-management-subscription-key>
+@apimName = aisesbpo7ljlwnuiyjri-apim
+@subscriptionKey = 527c041475474b47bf166ce1fc3eab20
 
 ### Customer API - Create
 POST https://{{apimName}}.azure-api.net/customer/create
@@ -30,12 +30,8 @@ Ocp-Apim-Subscription-Key: {{subscriptionKey}}
     "id": 1,
     "firstName": "Kathleen",
     "lastName": "Hernandez",
-    "status": 1
+    "status": 0
 }
-
-### Customer API - Get all
-GET https://{{apimName}}.azure-api.net/customer/get
-Ocp-Apim-Subscription-Key: {{subscriptionKey}}
 
 ### Customer API - Get, filter on id
 GET https://{{apimName}}.azure-api.net/customer/get?id=1
