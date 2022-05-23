@@ -4,7 +4,7 @@ env:
   # deploymentNameBuild: ${{ github.event.inputs.deploymentNameBuild }}
   # location: ${{ github.event.inputs.location }}
   buildBicepPath: './deploy/build/main.bicep'
-  deploymentNameBuild: 'deployEsbPatternBuild'
+  deploymentNameBuild: '${{ secrets.PREFIX }}-build'
   policySendListenName: 'SendListen'
   policySendOnlyName: 'SendOnly'
   
