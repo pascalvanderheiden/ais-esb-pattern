@@ -106,8 +106,25 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlineScript: |
-            $serviceBusSubUpdUri = "https://${{ env.SERVICEBUS_NS_NAME }}.servicebus.windows.net/${{ env.serviceBusTopicName }}/subscriptions/${{ env.serviceBusSubUpdName }}"
-            .\deploy\release\get-saskey-from-service-bus.ps1 -serviceBusUri $serviceBusSubUpdUri -accessPolicyName '${{ env.policySendListenName }}' -accessPolicyKey '${{ env.policySendListenKey }}' -apimName '${{ env.APIM_NAME }}' -resourceGroup '${{ env.resourceGroup }}' -apimNamedValueSig '${{ env.serviceBusTopicName }}'
+            $null = [Reflection.Assembly]::LoadWithPartialName("System.Web")
+            
+            # Set Variables
+            $serviceBusNameSpace="${{ env.SERVICEBUS_NS_NAME }}"
+            $accessPolicyName="${{ env.policySendListenName }}"
+            $dateTime=(Get-Date).ToString()
+            $URI="$serviceBusNameSpace.servicebus.windows.net"
+            $accessPolicyKey="${{ env.POLICY_SEND_LISTEN_KEY }}"
+
+            #Generate Temp SAS Token
+            $expires=([DateTimeOffset]::Now.ToUnixTimeSeconds())+31587840
+            $signatureString=[System.Web.HttpUtility]::UrlEncode($URI)+ "`n" + [string]$expires
+            $HMAC = New-Object System.Security.Cryptography.HMACSHA256
+            $HMAC.key = [Text.Encoding]::ASCII.GetBytes($accessPolicyKey)
+            $signature = $HMAC.ComputeHash([Text.Encoding]::ASCII.GetBytes($signatureString))
+            $signature = [Convert]::ToBase64String($signature)
+            $SASToken = "SharedAccessSignature sr=" + [System.Web.HttpUtility]::UrlEncode($URI) + "&sig=" + [System.Web.HttpUtility]::UrlEncode($signature) + "&se=" + $expires + "&skn=" + $accessPolicyName
+            
+            az apim nv create --service-name '${{ env.APIM_NAME }}' -g '${{ env.resourceGroup }}' --named-value-id '${{ env.serviceBusTopicName }}' --display-name '${{ env.serviceBusTopicName }}' --value $SASToken --secret true
           azPSVersion: "latest"
 
       - name: 'Get SQL Connection String'
