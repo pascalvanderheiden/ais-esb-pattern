@@ -152,4 +152,4 @@ Limit the PREFIX to a maximum of 6-7 characters.
 
 ### Commit
 
-Commit the changes, and this will trigger the CI Build Pipeline.
+You can trigger the GitHub Actions Build worfklow manually from GitHub. This will automatically kickoff the Release workflow as well. I've experienced some hickups during the Release workflow. The Create SQL Tables sometimes experiences a timeout. Just run it again from GitHub Actions.  
