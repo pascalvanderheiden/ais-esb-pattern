@@ -1,5 +1,5 @@
-@apimName = aisesbpo7ljlwnuiyjri-apim
-@subscriptionKey = 527c041475474b47bf166ce1fc3eab20
+@apimName = <your_apim_name>
+@subscriptionKey = <your_apim_subscription_key>
 
 ### Customer API - Create
 POST https://{{apimName}}.azure-api.net/customer/create
