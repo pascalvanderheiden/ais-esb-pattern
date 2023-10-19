@@ -22,11 +22,11 @@ var apiGetUpdatesPolicy = '<policies><inbound><base /><set-backend-service backe
 resource apiManagement 'Microsoft.ApiManagement/service@2020-12-01' existing = {
   name: apimName
 }
-
+/*
 resource apiManagementLogger 'Microsoft.ApiManagement/service/loggers@2020-12-01' existing = {
   name: '${apimName}/${appInsightsName}'
 }
-
+*/
 resource logicApp 'Microsoft.Web/sites@2021-02-01' existing = {
   name: logicAppName
 }
@@ -293,7 +293,7 @@ resource customerSchema 'Microsoft.ApiManagement/service/apis/schemas@2020-06-01
     }
   }
 }
-
+/*
 resource apiMonitoring 'Microsoft.ApiManagement/service/apis/diagnostics@2020-06-01-preview' = {
   name: 'applicationinsights'
   parent: apimApi
@@ -306,3 +306,4 @@ resource apiMonitoring 'Microsoft.ApiManagement/service/apis/diagnostics@2020-06
     operationNameFormat: 'Url'
   }
 }
+*/
