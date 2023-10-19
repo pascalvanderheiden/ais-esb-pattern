@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v2
 
       # LOGIN TO AZURE. THE LOGGED IN SESSION IS ACTIVE TILL A LOGOUT ACTION IS CALLED (OR THE JOB FINISHED)
-      - uses: azure/login@v1
+      - uses: azure/login@v1.x
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true 
@@ -143,16 +143,17 @@ jobs:
         with:        
           connection-string: ${{ env.AZURE_SQL_CONNECTION_STRING_SQL }}
           sql-file: '${{ env.releaseSqlScriptPath }}'
-
-      - name: 'Release Logic App Workflows & Connections'
-        uses: azure/powershell@v1
-        with:
-          inlineScript: |
-            $logicAppName = az logicapp list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{Name:name}" -o tsv
-            echo "LA_NAME=$logicAppName" >> $Env:GITHUB_ENV
-            .\deploy\release\logicapps_wf.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}'-logicAppName $logicAppName -workflowPathGet '${{ env.workflowPathGet }}' -workflowPathPost '${{ env.workflowPathPost }}' -workflowPathProcessSubOds '${{ env.workflowPathProcessSubOds }}' -sqlConnectionString '${{ env.AZURE_SQL_CONNECTION_STRING_LA }}' -serviceBusConnectionString '${{ env.SB_CONNECTIONSTRING }}' -destinationPath '${{ env.destinationPath }}'
-            az webapp restart --name $logicAppName --resource-group '${{ env.resourceGroup }}'
-          azPSVersion: "latest"
+      
+      # Note: zip deployment broken, deploy manually from Visual Studio Code.
+      #- name: 'Release Logic App Workflows & Connections'
+      #  uses: azure/powershell@v1
+      #  with:
+      #    inlineScript: |
+      #      $logicAppName = az logicapp list --resource-group '${{ env.resourceGroup }}' --subscription '${{ secrets.AZURE_SUBSCRIPTION_ID }}' --query "[].{Name:name}" -o tsv
+      #      echo "LA_NAME=$logicAppName" >> $Env:GITHUB_ENV
+      #      .\deploy\release\logicapps_wf.ps1 -subscriptionId '${{ secrets.AZURE_SUBSCRIPTION_ID }}' -resourceGroup '${{ env.resourceGroup }}'-logicAppName $logicAppName -workflowPathGet '${{ env.workflowPathGet }}' -workflowPathPost '${{ env.workflowPathPost }}' -workflowPathProcessSubOds '${{ env.workflowPathProcessSubOds }}' -sqlConnectionString '${{ env.AZURE_SQL_CONNECTION_STRING_LA }}' -serviceBusConnectionString '${{ env.SB_CONNECTIONSTRING }}' -destinationPath '${{ env.destinationPath }}'
+      #      az webapp restart --name $logicAppName --resource-group '${{ env.resourceGroup }}'
+      #    azPSVersion: "latest"
 
       - name: 'Retrieve SAS Keys and store in API Management as Named Value'
         uses: azure/powershell@v1
