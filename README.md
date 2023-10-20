@@ -105,8 +105,6 @@ $apimName = "<apim_name>"
 Limit the namePrefix to a maximum of 6-7 characters.
 
 ```ps1
-
-```ps1
 .\deploy\manual-deploy.ps1 -subscriptionId $subscriptionId -namePrefix $namePrefix -administratorLogin $administratorLogin -administratorLoginPassword $administratorLoginPassword
 ```
 
@@ -153,3 +151,7 @@ Limit the PREFIX to a maximum of 6-7 characters.
 ### Commit
 
 You can trigger the GitHub Actions Build worfklow manually from GitHub. This will automatically kickoff the Release workflow as well. I've experienced some hickups during the Release workflow. The Create SQL Tables sometimes experiences a timeout. Just run it again from GitHub Actions.  
+
+### Note    
+
+If you experience any troubles deploying the Logic Apps to Azure, you can try to deploy them manually via Visual Studio Code. You can find the Logic Apps in the 'ais-esb-' folders. Right-click on the folder, and Deploy to Azure. You can also use the 'Deploy to Azure' button in the Logic App Designer. The build pipeline needs to have run before you can execute this.
